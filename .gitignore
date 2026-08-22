@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+data/
+vectorstores/*.pkl
+.streamlit/secrets.toml
+.DS_Store
