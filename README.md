@@ -107,32 +107,7 @@ Every module below was actually executed during development, not just written:
 - `core/agent.py` — built the actual LangGraph graph and confirmed the compiled graph's nodes and bound tools are correct
 - `app.py` — ran with `streamlit run` in headless mode and confirmed it serves HTTP 200 with no startup errors
 
----
 
-## 7. Interview Q&A
-
-**Q1. TF-IDF kyu, proper embeddings (OpenAI/HuggingFace) kyu nahi?**
-> Neural embeddings semantic matching mein better hote hain, lekin unhe runtime pe ek model download karna padta hai (ya ek paid embedding API call). Free-tier hosting pe ye ek reliability risk hai — maine khud isko test karte waqt dekha ki model download fail ho sakta hai network conditions ke hisaab se. TF-IDF completely offline hai, deterministic hai, aur FAQ/product-doc scale (jaha queries aur documents dono relatively short aur keyword-rich hote hain) pe kaafi effective hai. Trade-off honestly bolta hoon: agar company ka knowledge base bahut bada ho ya queries paraphrased/indirect ho ("how do I get my money back" for "refund policy"), tab neural embeddings zaroori ho jaate. Architecture aisi rakhi hai ki `retrieve()` function ka interface same rehte hue backend swap ho sakta hai.
-
-**Q2. Multi-tenancy actually kaise enforce ki hai — kya guarantee hai ki ek company ka data doosri company ko nahi dikhega?**
-> Har tenant ka apna separate `.pkl` index file hai jo `tenant_id` se naam hai — physically alag storage, koi shared table/namespace nahi jisme filter bhoolne se leak ho jaaye. Maine isko explicitly test kiya: ek tenant ke paas documents the, doosre (naye) tenant_id se query karne pe "no documents" response aaya — cross-contamination nahi hua.
-
-**Q3. Custom tools admin khud API URL daal sakta hai — security risk nahi hai (SSRF jaisa)?**
-> Valid concern hai. Abhi ke liye tool factory try/except mein wrapped hai taaki koi bhi failure (unreachable URL, timeout, wrong response) agent ko crash na kare — graceful degradation. Production version mein main URL allowlisting add karunga (admin sirf pre-verified domains add kar sake, ya company apne API ko ek verification step se register kare) taaki koi malicious internal URL (jaise cloud metadata endpoint) na daal sake.
-
-**Q4. Conversation memory kaise persist hoti hai — agar user browser refresh kare toh?**
-> LangGraph ka `MemorySaver` checkpointer use kiya hai, thread_id ke saath jo tenant_id + session-specific UUID se bana hai. Abhi ye in-memory hai (app restart pe reset ho jaata), Streamlit session state mein thread_id store hota hai isliye ek hi browser session ke andar continuity milti hai. Production mein `SqliteSaver` ya `PostgresSaver` mein switch karke isko durable bana sakta hoon — same LangGraph interface, sirf backend change.
-
-**Q5. Streamlit hi kyu, proper React frontend + FastAPI backend kyu nahi?**
-> Speed of iteration ke liye — Streamlit se poora multi-tab admin UI + chat + streaming ek hi file mein ban gaya, aur free deployment bhi built-in hai jo resume-ready live link ke liye perfect hai. Real limitation honestly: Streamlit single-user-per-session model follow karta hai, high-concurrency production SaaS ke liye ideal nahi. Agle step mein main FastAPI backend banake agent logic ko API ke peeche daal dunga, aur Streamlit ko sirf ek admin-preview client ki tarah rakhunga — widget khud lightweight vanilla JS se banega jo company ki site pe embed ho.
-
-**Q6. Agent ko kaise pata chalta hai kab tool use karna hai vs seedha answer dena hai?**
-> Ye LLM ka function-calling capability hai (Groq's Llama models function-calling support karte hain) — jab main tools ko `bind_tools()` se LLM ke saath bind karta hoon, LLM khud decide karta hai based on system prompt + user query ki koi tool relevant hai ya nahi. `tools_condition` LangGraph ka built-in router hai jo check karta hai ki LLM ne tool_call return kiya ya final answer — uske hisaab se graph "tools" node pe jaata hai ya "END" pe.
-
-**Q7. Is project ko kaise scale karoge agar 50 companies use karne lagein?**
-> Current bottlenecks: (1) JSON file store — concurrent writes se race condition ho sakti hai, Postgres/SQLite mein migrate karna hoga; (2) TF-IDF refit-on-every-upload — bade corpus ke liye slow ho jaayega, incremental indexing ya vector DB (Qdrant/Pinecone) chahiye hoga; (3) Streamlit ka single-process model — FastAPI + worker queue better hoga concurrent requests ke liye. Maine in sab trade-offs ko consciously choose kiya hai demo-scale ke liye, aur production path clearly pata hai.
-
----
 
 ## 8. Project structure
 
